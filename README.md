@@ -2,8 +2,6 @@
 
 > https://github.com/ladderleap)
 
-本项目仅为个人学习非原创
-
 
 
 
