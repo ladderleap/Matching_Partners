@@ -8,8 +8,10 @@ import com.yupi.yupao.exception.BusinessException;
 import com.yupi.yupao.model.domain.Team;
 import com.yupi.yupao.model.domain.User;
 import com.yupi.yupao.model.dto.TeamQuery;
+import com.yupi.yupao.model.request.TeamAddRequest;
 import com.yupi.yupao.service.UserService;
 import com.yupi.yupao.service.impl.TeamServiceImpl;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,15 +34,14 @@ public class TeamController {
     UserService userService;
 
     @PostMapping("/add")
-    public BaseResponse<Team> add(@RequestBody Team team, HttpServletRequest request) {
-        if (team == null) {
+    public BaseResponse<Team> add(@RequestBody TeamAddRequest teamAddRequest, HttpServletRequest request) {
+        if (teamAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        Team team = new Team();
+        BeanUtils.copyProperties(teamAddRequest,team);
         User loginUser = userService.getLoginUser(request);
         teamService.addTeam(team,loginUser);
-        if (!result) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "add team fail");
-        }
         return ResultUtils.success(team);
     }
 

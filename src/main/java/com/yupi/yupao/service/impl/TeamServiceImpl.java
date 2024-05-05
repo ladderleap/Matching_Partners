@@ -53,7 +53,9 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     private RedissonClient redissonClient;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public long addTeam(Team team, User loginUser) {
+        Long userId = loginUser.getId();
         if(team == null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -65,7 +67,44 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"队伍人数必须在1-20之间");
             
         }
-        return 1;
+        String description = team.getDescription();
+        if (StringUtils.isNotBlank(description) && description.length() > 512) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍描述过长");
+        }
+        int status = Optional.ofNullable(team.getStatus()).orElse(0);
+        TeamStatusEnum enumByValue = TeamStatusEnum.getEnumByValue(status);
+        if(enumByValue == null){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"队伍状态不正确");
+        }
+
+        String password = team.getPassword();
+        if(TeamStatusEnum.SECRET.equals(enumByValue)){
+            if(StringUtils.isBlank(password) || password.length() > 32){
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR,"密码格式不正确");
+            }
+        }
+        QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId",userId);
+        long count = userTeamService.count(queryWrapper);
+        if(count >5){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"超出可创建队伍上限");
+        }
+
+        boolean result = this.save(team);
+        if(!result){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"创建队伍失败");
+        }
+
+
+        UserTeam userTeam = new UserTeam();
+        userTeam.setUserId(userId);
+        userTeam.setTeamId(team.getId());
+        userTeam.setJoinTime(new Date());
+        result = userTeamService.save(userTeam);
+        if(!result){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"创建队伍失败");
+        }
+        return team.getId();
     }
 
     @Override
