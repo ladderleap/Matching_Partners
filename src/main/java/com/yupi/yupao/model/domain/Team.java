@@ -19,7 +19,7 @@ public class Team implements Serializable {
      * id
      */
     @TableId(type = IdType.AUTO)
-    private Long id;
+    private long id;
 
     /**
      * 队伍名称
