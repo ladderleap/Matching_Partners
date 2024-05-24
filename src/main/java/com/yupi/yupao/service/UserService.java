@@ -1,9 +1,7 @@
 package com.yupi.yupao.service;
 
-import com.yupi.yupao.common.BaseResponse;
 import com.yupi.yupao.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.yupi.yupao.model.vo.UserVO;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -25,7 +23,7 @@ public interface UserService extends IService<User> {
      * @param planetCode    星球编号
      * @return 新用户 id
      */
-    long userRegister(String userAccount, String userPassword, String checkPassword, String planetCode);
+    long userRegister(String userAccount,String userName, String planetCode,String userPassword, String checkPassword);
 
     /**
      * 用户登录
@@ -92,9 +90,14 @@ public interface UserService extends IService<User> {
 
     /**
      * 匹配用户
+     *
      * @param num
      * @param loginUser
      * @return
      */
     List<User> matchUsers(long num, User loginUser);
+
+    String getUserTags(User loginUser);
+
+    boolean updateUserTags(String updateTags, User loginUser);
 }

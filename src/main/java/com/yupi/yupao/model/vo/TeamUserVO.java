@@ -76,4 +76,15 @@ public class TeamUserVO implements Serializable {
      * 是否已加入队伍
      */
     private boolean hasJoin = false;
+
+
+    public TeamUserVO setHasJoinNum(Integer hasJoinNum) {
+        this.hasJoinNum = hasJoinNum;
+        return this;
+    }
+
+    public TeamUserVO setHasJoin(boolean hasJoin) {
+        this.hasJoin = hasJoin;
+        return this;
+    }
 }

@@ -7,8 +7,10 @@ import com.yupi.yupao.common.ErrorCode;
 import com.yupi.yupao.common.ResultUtils;
 import com.yupi.yupao.exception.BusinessException;
 import com.yupi.yupao.model.domain.User;
+import com.yupi.yupao.model.request.TagsUpdateRequest;
 import com.yupi.yupao.model.request.UserLoginRequest;
 import com.yupi.yupao.model.request.UserRegisterRequest;
+import com.yupi.yupao.model.vo.RecommendUserVo;
 import com.yupi.yupao.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -18,7 +20,9 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -50,11 +54,13 @@ public class UserController {
         String userAccount = userRegisterRequest.getUserAccount();
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
-        String planetCode = userRegisterRequest.getPlanetCode();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword, planetCode)) {
+        String userName = userRegisterRequest.getUserName();
+//        String planetCode = userRegisterRequest.getPlanetCode();
+        String planetCode = (UUID.randomUUID()).toString();
+        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
             return ResultUtils.error(ErrorCode.NULL_ERROR,"参数为空");
         }
-        long result = userService.userRegister(userAccount, userPassword, checkPassword, planetCode);
+        long result = userService.userRegister(userAccount,userName, planetCode,userPassword, checkPassword);
         return ResultUtils.success(result);
     }
 
@@ -69,6 +75,9 @@ public class UserController {
             return ResultUtils.error(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.userLogin(userAccount, userPassword, request);
+        String sessionId = request.getSession().getId();
+        log.info("该用户的sessionI为:{}",sessionId);
+        System.out.println(sessionId);
         return ResultUtils.success(user);
     }
 
@@ -160,12 +169,16 @@ public class UserController {
 //        return ResultUtils.success(userPage);
 //    }
     @GetMapping("/recommend")
-    public BaseResponse<Page<User>> recommend(long pageNum, long pageSize, HttpServletRequest request) {
+    public BaseResponse<RecommendUserVo> recommend(long pageNum, long pageSize, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         String recommendKey = String.format("recommend:user:%s", loginUser.getId());
+        long count = userService.count();
         Page<User> page = (Page<User>) redisTemplate.opsForValue().get(recommendKey);
+        RecommendUserVo recommendUserVo = new RecommendUserVo();
         if(page != null){
-            return ResultUtils.success(page);
+            recommendUserVo.setPageResult(page);
+            recommendUserVo.setTotal(count);
+            return ResultUtils.success(recommendUserVo);
         }
 
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
@@ -175,7 +188,9 @@ public class UserController {
         } catch (Exception e) {
             log.error("redis set key",e);
         }
-        return ResultUtils.success(page);
+        recommendUserVo.setPageResult(page);
+        recommendUserVo.setTotal(count);
+        return ResultUtils.success(recommendUserVo);
     }
     
     @PostMapping("/update")
@@ -212,12 +227,27 @@ public class UserController {
      * @return
      */
     @GetMapping("/match")
-    public BaseResponse<List<User>> matchUsers(long num, HttpServletRequest request) {
-        if (num <= 0 || num > 20) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+    public BaseResponse<List<User>> matchUsers(int num, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        List<User> users = userService.matchUsers(num, loginUser);
+        return ResultUtils.success(users);
+    }
+
+    @GetMapping("/tags")
+    public BaseResponse<String> userTags(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String userTags = userService.getUserTags(loginUser);
+        return ResultUtils.success(userTags);
+    }
+    @PostMapping("/update/tags")
+    public BaseResponse<Boolean> updateTags(@RequestBody TagsUpdateRequest tagsUpdateRequest, HttpServletRequest request) {
+        String updateTags = tagsUpdateRequest.getTags();
+        if(StringUtils.isBlank(updateTags)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"请求数据为空");
         }
-        User user = userService.getLoginUser(request);
-        return ResultUtils.success(userService.matchUsers(num, user));
+        User loginUser = userService.getLoginUser(request);
+        boolean result = userService.updateUserTags(updateTags, loginUser);
+        return ResultUtils.success(result);
     }
 
 }

@@ -3,20 +3,17 @@ package com.yupi.yupao.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
-import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
 import com.yupi.yupao.common.ErrorCode;
 import com.yupi.yupao.constant.UserConstant;
 import com.yupi.yupao.exception.BusinessException;
 import com.yupi.yupao.model.domain.User;
-import com.yupi.yupao.model.vo.UserVO;
 import com.yupi.yupao.service.UserService;
 import com.yupi.yupao.mapper.UserMapper;
 import com.yupi.yupao.utils.AlgorithmUtils;
+import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
-import net.bytebuddy.description.method.MethodDescription;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.math3.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
@@ -51,7 +48,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private static final String SALT = "yupi";
 
     @Override
-    public long userRegister(String userAccount, String userPassword, String checkPassword, String planetCode) {
+    public long userRegister(String userAccount, String userName, String planetCode,String userPassword, String checkPassword) {
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword, planetCode)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
@@ -62,9 +59,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (userPassword.length() < 8 || checkPassword.length() < 8) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短");
         }
-        if (planetCode.length() > 5) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "星球编号过长");
-        }
+//        if (planetCode.length() > 5) {
+//            throw new BusinessException(ErrorCode.PARAMS_ERROR, "星球编号过长");
+//        }
         // 账户不能包含特殊字符
         String validPattern = "[`~!@#$%^&*()+=|{}':;',\\\\[\\\\].<>/?~！@#￥%……&*（）——+|{}【】‘；：”“’。，、？]";
         Matcher matcher = Pattern.compile(validPattern).matcher(userAccount);
@@ -96,6 +93,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setUserAccount(userAccount);
         user.setUserPassword(encryptPassword);
         user.setPlanetCode(planetCode);
+        user.setUsername(userName);
         boolean saveResult = this.save(user);
         if (!saveResult) {
             return -1;
@@ -253,9 +251,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             if (request == null) {
             return null;
         }
+        String id = request.getSession().getId();
+            log.info("用户校验的sessionId:{}",id);
         Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         if (userObj == null) {
-            throw new BusinessException(ErrorCode.NO_AUTH);
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
         return (User) userObj;
     }
@@ -288,50 +288,71 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public List<User> matchUsers(long num, User loginUser) {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.select("id", "tags");
+        queryWrapper.select("id","tags");
         queryWrapper.isNotNull("tags");
         List<User> userList = this.list(queryWrapper);
         String tags = loginUser.getTags();
+        if(StringUtils.isBlank(tags)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"您的标签为空");
+        }
         Gson gson = new Gson();
-        List<String> tagList = gson.fromJson(tags, new TypeToken<List<String>>() {
+        List<String> tagList = gson.fromJson(tags,new TypeToken<List<String>>(){
+
         }.getType());
-        // 用户列表的下标 => 相似度
-        List<Pair<User, Long>> list = new ArrayList<>();
-        // 依次计算所有用户和当前用户的相似度
+        ArrayList<Pair<User,Long>> list = new ArrayList<>();
         for (int i = 0; i < userList.size(); i++) {
             User user = userList.get(i);
             String userTags = user.getTags();
-            // 无标签或者为当前用户自己
-            if (StringUtils.isBlank(userTags) || user.getId() == loginUser.getId()) {
+            if(StringUtils.isBlank(userTags) || user.getId() == loginUser.getId()){
                 continue;
             }
-            List<String> userTagList = gson.fromJson(userTags, new TypeToken<List<String>>() {
+            List<String> userTagsList = gson.fromJson(userTags,new TypeToken<List<String>>(){
             }.getType());
-            // 计算分数
-            long distance = AlgorithmUtils.minDistance(tagList, userTagList);
-            list.add(new Pair<>(user, distance));
+            long distance = AlgorithmUtils.minDistance(tagList, userTagsList);
+            list.add(new Pair<>(user,distance));
         }
-        // 按编辑距离由小到大排序
-        List<Pair<User, Long>> topUserPairList = list.stream()
-                .sorted((a, b) -> (int) (a.getValue() - b.getValue()))
-                .limit(num)
-                .collect(Collectors.toList());
-        // 原本顺序的 userId 列表
-        List<Long> userIdList = topUserPairList.stream().map(pair -> pair.getKey().getId()).collect(Collectors.toList());
-        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
-        userQueryWrapper.in("id", userIdList);
-        // 1, 3, 2
-        // User1、User2、User3
-        // 1 => User1, 2 => User2, 3 => User3
-        Map<Long, List<User>> userIdUserListMap = this.list(userQueryWrapper)
-                .stream()
-                .map(user -> getSafetyUser(user))
-                .collect(Collectors.groupingBy(User::getId));
-        List<User> finalUserList = new ArrayList<>();
-        for (Long userId : userIdList) {
-            finalUserList.add(userIdUserListMap.get(userId).get(0));
+        List<Pair<User, Long>> topUserList = list.stream().sorted((a, b) -> (int) (a.getValue() - b.getValue())).limit(num).collect(Collectors.toList());
+
+
+        List<Long> topUserIdList = topUserList.stream().map(Pair->Pair.getKey().getId()).collect(Collectors.toList());
+         queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("id", topUserIdList);
+        Map<Long, List<User>> userListMap = this.list(queryWrapper).stream().map(user -> getSafetyUser(user)).collect(Collectors.groupingBy(User::getId));
+        ArrayList<User> finalUserList = new ArrayList<>();
+        for (Long user : topUserIdList) {
+            finalUserList.add(userListMap.get(user).get(0));
         }
         return finalUserList;
+    }
+
+    @Override
+    public String getUserTags(User loginUser) {
+        long userid = loginUser.getId();
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("id",userid);
+        User user = this.getOne(queryWrapper);
+        String tags = user.getTags();
+        if(StringUtils.isBlank(tags)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"您的标签为空");
+        }
+        return tags;
+    }
+
+    @Override
+    public boolean updateUserTags(String updateTags, User loginUser) {
+        long userId = loginUser.getId();
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("id",userId);
+        User user = this.getOne(queryWrapper);
+        String oldTags = user.getTags();
+        if(updateTags.equals(oldTags)){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"更新的数据一致");
+        }
+        User updateUserTags = new User();
+        updateUserTags.setId(userId);
+        updateUserTags.setTags(updateTags);
+        return this.updateById(updateUserTags);
+
     }
 
     /**

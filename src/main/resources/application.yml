@@ -9,7 +9,7 @@ spring:
   # DataSource Config
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/yupao?serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://60.205.115.71:3306/yupao?serverTimezone=Asia/Shanghai
     username: root
     password: 123123
   # session 失效时间（分钟）
@@ -22,15 +22,16 @@ spring:
   # redis 配置
   redis:
     port: 6379
-    host: localhost
-    database: 1
+    host: 60.205.115.71
+    database: 2
+    password: 123123
 server:
-  port: 8081
+  port: 8080
   servlet:
     context-path: /api
-    session:
-      cookie:
-        domain: localhost
+#    session:
+#      cookie:
+#        domain: localhost
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
