@@ -99,5 +99,5 @@ public interface UserService extends IService<User> {
 
     String getUserTags(User loginUser);
 
-    boolean updateUserTags(String updateTags, User loginUser);
+    boolean updateUserTags(String updateTags, HttpServletRequest request);
 }

@@ -245,8 +245,7 @@ public class UserController {
         if(StringUtils.isBlank(updateTags)){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"请求数据为空");
         }
-        User loginUser = userService.getLoginUser(request);
-        boolean result = userService.updateUserTags(updateTags, loginUser);
+        boolean result = userService.updateUserTags(updateTags, request);
         return ResultUtils.success(result);
     }
 

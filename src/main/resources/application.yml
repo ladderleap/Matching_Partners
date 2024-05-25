@@ -2,6 +2,8 @@
 # @author <a href="https://github.com/liyupi">程序员鱼皮</a>
 # @from <a href="https://yupi.icu">编程导航知识星球</a>
 spring:
+  config:
+    import: optional:config.yml
   profiles:
     active: dev
   application:
@@ -9,9 +11,9 @@ spring:
   # DataSource Config
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://60.205.115.71:3306/yupao?serverTimezone=Asia/Shanghai
-    username: root
-    password: 123123
+    url: ${myapp.datasource.url}
+    username: ${myapp.datasource.username}
+    password: ${myapp.datasource.password}
   # session 失效时间（分钟）
   session:
     timeout: 86400
@@ -21,12 +23,12 @@ spring:
       matching-strategy: ANT_PATH_MATCHER
   # redis 配置
   redis:
-    port: 6379
-    host: 60.205.115.71
-    database: 2
-    password: 123123
+    port: ${myapp.redis.port}
+    host: ${myapp.redis.host}
+    database: ${myapp.redis.database}
+    password: ${myapp.redis.password}
 server:
-  port: 8080
+  port: ${myapp.server.port}
   servlet:
     context-path: /api
 #    session:

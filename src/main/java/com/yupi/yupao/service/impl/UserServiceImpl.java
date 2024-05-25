@@ -14,6 +14,7 @@ import com.yupi.yupao.utils.AlgorithmUtils;
 import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
@@ -297,8 +298,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         Gson gson = new Gson();
         List<String> tagList = gson.fromJson(tags,new TypeToken<List<String>>(){
-
         }.getType());
+        if(CollectionUtils.isEmpty(tagList)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"您的标签为空");
+        }
         ArrayList<Pair<User,Long>> list = new ArrayList<>();
         for (int i = 0; i < userList.size(); i++) {
             User user = userList.get(i);
@@ -339,7 +342,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public boolean updateUserTags(String updateTags, User loginUser) {
+    public boolean updateUserTags(String updateTags, HttpServletRequest request) {
+        User loginUser = this.getLoginUser(request);
         long userId = loginUser.getId();
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("id",userId);
@@ -351,7 +355,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         User updateUserTags = new User();
         updateUserTags.setId(userId);
         updateUserTags.setTags(updateTags);
-        return this.updateById(updateUserTags);
+//        更新标签只有更新之后session重置状态得到的才是新数据
+        boolean updateResult = this.updateById(updateUserTags);
+//        这里是将session缓存中的用户信息进行一个更新否则获取的信息是久的标签
+        User updateUser = this.getById(userId);
+        User safetyUser = getSafetyUser(updateUser);
+        // 4. 记录用户的登录态
+        request.getSession().setAttribute(USER_LOGIN_STATE, safetyUser);
+        User loginUser1 = this.getLoginUser(request);
+        System.out.println(loginUser1);
+        return updateResult;
 
     }
 
