@@ -311,7 +311,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             }
             List<String> userTagsList = gson.fromJson(userTags,new TypeToken<List<String>>(){
             }.getType());
-            long distance = AlgorithmUtils.minDistance(tagList, userTagsList);
+
+
+//            找出共同标签
+            List<String> commonElements = tagList.stream()
+                    .filter(userTagsList::contains)
+                    .collect(Collectors.toList());
+
+            // 排序list1，将共同的元素放在前面，保留原来的顺序
+            List<String> sortedList1 = tagList.stream()
+                    .sorted(Comparator.comparingInt(s -> commonElements.contains(s) ? commonElements.indexOf(s) : Integer.MAX_VALUE))
+                    .collect(Collectors.toList());
+
+            // 排序list2，将共同的元素放在前面，保留原来的顺序
+            List<String> sortedList2 = userTagsList.stream()
+                    .sorted(Comparator.comparingInt(s -> commonElements.contains(s) ? commonElements.indexOf(s) : Integer.MAX_VALUE))
+                    .collect(Collectors.toList());
+
+
+
+            long distance = AlgorithmUtils.minDistance(sortedList1, sortedList2);
             list.add(new Pair<>(user,distance));
         }
         List<Pair<User, Long>> topUserList = list.stream().sorted((a, b) -> (int) (a.getValue() - b.getValue())).limit(num).collect(Collectors.toList());
