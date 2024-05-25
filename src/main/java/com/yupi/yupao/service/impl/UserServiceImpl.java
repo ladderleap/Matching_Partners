@@ -352,9 +352,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if(updateTags.equals(oldTags)){
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"更新的数据一致");
         }
+//        标签去重
+        Gson gson = new Gson();
+        List<String> tagList = gson.fromJson(updateTags,new TypeToken<List<String>>(){
+        }.getType());
+        Map<String, List<String>> collect = tagList.stream().collect(Collectors.groupingBy(tag -> tag));
+        ArrayList<String> processedTagList = new ArrayList<>(collect.keySet());
+        String tagStringList = gson.toJson(processedTagList);
+
         User updateUserTags = new User();
         updateUserTags.setId(userId);
-        updateUserTags.setTags(updateTags);
+        updateUserTags.setTags(tagStringList);
 //        更新标签只有更新之后session重置状态得到的才是新数据
         boolean updateResult = this.updateById(updateUserTags);
 //        这里是将session缓存中的用户信息进行一个更新否则获取的信息是久的标签

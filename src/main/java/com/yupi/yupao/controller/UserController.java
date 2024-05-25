@@ -228,7 +228,8 @@ public class UserController {
      */
     @GetMapping("/match")
     public BaseResponse<List<User>> matchUsers(int num, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+
+         User loginUser = userService.getLoginUser(request);
         List<User> users = userService.matchUsers(num, loginUser);
         return ResultUtils.success(users);
     }
