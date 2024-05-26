@@ -2,6 +2,7 @@ package com.yupi.yupao.service;
 
 import com.yupi.yupao.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yupi.yupao.model.request.UserRegisterRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -14,16 +15,12 @@ import java.util.List;
  */
 public interface UserService extends IService<User> {
 
+
     /**
-     * 用户注册
-     *
-     * @param userAccount   用户账户
-     * @param userPassword  用户密码
-     * @param checkPassword 校验密码
-     * @param planetCode    星球编号
-     * @return 新用户 id
+     * @param userRegisterRequest
+     * @return
      */
-    long userRegister(String userAccount,String userName, String planetCode,String userPassword, String checkPassword);
+    long userRegister(UserRegisterRequest userRegisterRequest);
 
     /**
      * 用户登录

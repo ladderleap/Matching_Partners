@@ -51,16 +51,10 @@ public class UserController {
         if (userRegisterRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        String userAccount = userRegisterRequest.getUserAccount();
-        String userPassword = userRegisterRequest.getUserPassword();
-        String checkPassword = userRegisterRequest.getCheckPassword();
-        String userName = userRegisterRequest.getUserName();
+
 //        String planetCode = userRegisterRequest.getPlanetCode();
-        String planetCode = (UUID.randomUUID()).toString();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
-            return ResultUtils.error(ErrorCode.NULL_ERROR,"参数为空");
-        }
-        long result = userService.userRegister(userAccount,userName, planetCode,userPassword, checkPassword);
+
+        long result = userService.userRegister(userRegisterRequest);
         return ResultUtils.success(result);
     }
 

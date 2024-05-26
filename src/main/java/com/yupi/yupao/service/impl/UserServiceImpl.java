@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.yupi.yupao.common.ErrorCode;
+import com.yupi.yupao.common.ResultUtils;
 import com.yupi.yupao.constant.UserConstant;
 import com.yupi.yupao.exception.BusinessException;
 import com.yupi.yupao.model.domain.User;
+import com.yupi.yupao.model.request.UserRegisterRequest;
 import com.yupi.yupao.service.UserService;
 import com.yupi.yupao.mapper.UserMapper;
 import com.yupi.yupao.utils.AlgorithmUtils;
@@ -49,7 +51,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private static final String SALT = "yupi";
 
     @Override
-    public long userRegister(String userAccount, String userName, String planetCode,String userPassword, String checkPassword) {
+    public long userRegister(UserRegisterRequest userRegisterRequest) {
+        String userAccount = userRegisterRequest.getUserAccount();
+        String userPassword = userRegisterRequest.getUserPassword();
+        String checkPassword = userRegisterRequest.getCheckPassword();
+        String userName = userRegisterRequest.getUserName();
+        String gender = userRegisterRequest.getGender();
+        String planetCode = (UUID.randomUUID()).toString();
+        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword,gender)) {
+            return -1;
+        }
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword, planetCode)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
@@ -95,6 +106,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setUserPassword(encryptPassword);
         user.setPlanetCode(planetCode);
         user.setUsername(userName);
+        user.setEmail(userRegisterRequest.getEmail());
+        user.setPhone(userRegisterRequest.getPhone());
         boolean saveResult = this.save(user);
         if (!saveResult) {
             return -1;
@@ -132,7 +145,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 用户不存在
         if (user == null) {
             log.info("user login failed, userAccount cannot match userPassword");
-            return null;
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"账号或密码错误");
         }
         // 3. 用户脱敏
         User safetyUser = getSafetyUser(user);
@@ -375,7 +388,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         Gson gson = new Gson();
         List<String> tagList = gson.fromJson(updateTags,new TypeToken<List<String>>(){
         }.getType());
-        Map<String, List<String>> collect = tagList.stream().collect(Collectors.groupingBy(tag -> tag));
+        Map<String, List<String>> collect = tagList.stream()
+                .collect(Collectors.groupingBy(tag -> tag, LinkedHashMap::new, Collectors.toList()));
         ArrayList<String> processedTagList = new ArrayList<>(collect.keySet());
         String tagStringList = gson.toJson(processedTagList);
 
