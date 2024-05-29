@@ -30,8 +30,8 @@ public class PreCacheByMySelf {
     private RedisTemplate redisTemplate;
     @Autowired
     private RedissonClient redissonClient;
-    private List<Long> mainUserList = Arrays.asList(1L,2L,3L,4L,5L,6L,7L,8L,9L,10L,11L,12L,13L,14L,15L,16L,17L,18L);
-//    @Scheduled(cron = "0 * * * * * ")
+    private List<Long> mainUserList = Arrays.asList(1L,2L,3L,4L,5L,6L,7L,8L,9L,10L,11L,12L,13L,14L,15L,16L,17L,1956422L);
+    @Scheduled(cron = "0 0 8 * * ? ")
     public void CacheMainUser(){
         RLock lock = redissonClient.getLock("recommend:lock:%s");
         try {
@@ -43,7 +43,7 @@ public class PreCacheByMySelf {
                     String recommendKey = String.format("recommend:user:%s", userId);
                     log.info("Scheduled Task,recommendKey: {}",recommendKey);
                     try {
-                        redisTemplate.opsForValue().set(recommendKey,page,30000, TimeUnit.MILLISECONDS);
+                        redisTemplate.opsForValue().set(recommendKey,page,10, TimeUnit.HOURS);
                     } catch (Exception e) {
                         log.error("redis set key error",e);
                     }

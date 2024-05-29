@@ -4,12 +4,7 @@ import com.alibaba.excel.EasyExcel;
 
 import java.util.List;
 
-/**
- * 导入 Excel
- *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
- * @from <a href="https://yupi.icu">编程导航知识星球</a>
- */
+
 public class ImportExcel {
 
     /**

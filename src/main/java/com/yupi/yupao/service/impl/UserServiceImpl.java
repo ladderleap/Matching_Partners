@@ -31,12 +31,7 @@ import java.util.stream.Stream;
 
 import static com.yupi.yupao.constant.UserConstant.USER_LOGIN_STATE;
 
-/**
- * 用户服务实现类
- *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
- * @from <a href="https://yupi.icu">编程导航知识星球</a>
- */
+
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
@@ -121,13 +116,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public User userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
-            return null;
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"账号或密码为空");
         }
         if (userAccount.length() < 4) {
-            return null;
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"账号不合法");
         }
         if (userPassword.length() < 8) {
-            return null;
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"密码不合法");
         }
         // 账户不能包含特殊字符
         String validPattern = "[`~!@#$%^&*()+=|{}':;',\\\\[\\\\].<>/?~！@#￥%……&*（）——+|{}【】‘；：”“’。，、？]";
