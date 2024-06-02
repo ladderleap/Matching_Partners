@@ -170,9 +170,17 @@ public class TeamController {
 //          2=> 3  这么做的意义是如果出现了重复可以去重避免重复查询同一个teamId
         Map<Long, List<UserTeam>> listMap = userTeams.stream().collect(Collectors.groupingBy(UserTeam::getTeamId));
         ArrayList<Long> idList = new ArrayList<>(listMap.keySet());
+
+
+        QueryWrapper<UserTeam> teamQueryWrapper = new QueryWrapper<>();
+        teamQueryWrapper.in("teamId",idList);
+        List<UserTeam> teamMemberCount = userTeamService.list(teamQueryWrapper);
+        Map<Long, List<UserTeam>> teamMemberListMap = teamMemberCount.stream().collect(Collectors.groupingBy(UserTeam::getTeamId));
+
+
         teamQuery.setIdList(idList);
         List<TeamUserVO> teamUserVOS = teamService.listTeams(teamQuery, true);
-        teamUserVOS.forEach(teamUserVO -> teamUserVO.setHasJoinNum(listMap.getOrDefault(teamUserVO.getId(),new ArrayList<>()).size())
+        teamUserVOS.forEach(teamUserVO -> teamUserVO.setHasJoinNum(teamMemberListMap.getOrDefault(teamUserVO.getId(),new ArrayList<>()).size())
                 .setHasJoin(true));
         return ResultUtils.success(teamUserVOS);
     }

@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
+import org.springframework.util.StopWatch;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -43,7 +44,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     /**
      * 盐值，混淆密码
      */
-    private static final String SALT = "yupi";
+    private static final String SALT = "yunlu";
 
     @Override
     public long userRegister(UserRegisterRequest userRegisterRequest) {
@@ -296,10 +297,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public List<User> matchUsers(long num, User loginUser) {
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.select("id","tags");
         queryWrapper.isNotNull("tags");
         List<User> userList = this.list(queryWrapper);
+        stopWatch.stop();
+        System.out.println("tags的查询时间:"+stopWatch.getTotalTimeSeconds());
         String tags = loginUser.getTags();
         if(StringUtils.isBlank(tags)){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"您的标签为空");
@@ -339,7 +344,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
 
             long distance = AlgorithmUtils.minDistance(sortedList1, sortedList2);
-            list.add(new Pair<>(user,distance));
+            if(list.size()<num){
+                list.add(new Pair<>(user,distance));
+            }else{
+                Pair<User, Long> maxPair = list.stream().max(Comparator.comparingLong(Pair::getValue)).get();
+                if(distance < maxPair.getValue()){
+                    list.remove(maxPair);
+                    list.add(new Pair<>(user,distance));
+                }
+            }
         }
         List<Pair<User, Long>> topUserList = list.stream().sorted((a, b) -> (int) (a.getValue() - b.getValue())).limit(num).collect(Collectors.toList());
 

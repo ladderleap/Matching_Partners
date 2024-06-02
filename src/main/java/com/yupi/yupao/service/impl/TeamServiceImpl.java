@@ -202,12 +202,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数错误");
         }
         Long userId = loginUser.getId();
-        QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
-        userTeamQueryWrapper.eq("userId", userId);
-        long count = userTeamService.count(userTeamQueryWrapper);
-        if (count > 5) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "超出可加入队伍上限");
-        }
 
 
         Long teamId = teamJoinRequest.getTeamId();
@@ -236,26 +230,46 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             }
         }
 
-        userTeamQueryWrapper = new QueryWrapper<>();
-        userTeamQueryWrapper.eq("teamId", teamId);
-        userTeamQueryWrapper.eq("userId", userId);
-        long hasJoinTeamCount = userTeamService.count(userTeamQueryWrapper);
-        if (hasJoinTeamCount > 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "已加入该队伍");
+        RLock lock = redissonClient.getLock("matching:joinTeam");
+        try {
+            while (true) {
+                if (lock.tryLock(0, 1, TimeUnit.MILLISECONDS)) {
+                    System.out.println("getLock: " + Thread.currentThread().getId());
+                    QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
+                    userTeamQueryWrapper.eq("userId", userId);
+                    long hasJoinNum = userTeamService.count(userTeamQueryWrapper);
+                    if (hasJoinNum > 5) {
+                        throw new BusinessException(ErrorCode.PARAMS_ERROR, "最多创建和加入 5 个队伍");
+                    }
+                    userTeamQueryWrapper = new QueryWrapper<>();
+                    userTeamQueryWrapper.eq("teamId", teamId);
+                    userTeamQueryWrapper.eq("userId", userId);
+                    long hasJoinTeamCount = userTeamService.count(userTeamQueryWrapper);
+                    if (hasJoinTeamCount > 0) {
+                        throw new BusinessException(ErrorCode.PARAMS_ERROR, "已加入该队伍");
+                    }
+
+                    if (countTeamUserByTeamId(teamId) >= team.getMaxNum()) {
+                        throw new BusinessException(ErrorCode.NULL_ERROR, "队伍人数已满");
+                    }
+
+                    UserTeam userTeam = new UserTeam();
+                    userTeam.setUserId(userId);
+                    userTeam.setTeamId(teamId);
+                    userTeam.setJoinTime(new Date());
+                    return userTeamService.save(userTeam);
+                }
+            }
+        } catch (InterruptedException e) {
+            log.error("doCacheRecommendUser error", e);
+            return false;
+        }finally {
+            // 只能释放自己的锁
+            if (lock.isHeldByCurrentThread()) {
+                System.out.println("unLock: " + Thread.currentThread().getId());
+                lock.unlock();
+            }
         }
-
-
-        if (countTeamUserByTeamId(teamId) >= team.getMaxNum()) {
-            throw new BusinessException(ErrorCode.NULL_ERROR, "队伍人数已满");
-        }
-
-
-        UserTeam userTeam = new UserTeam();
-        userTeam.setUserId(userId);
-        userTeam.setTeamId(teamId);
-        userTeam.setJoinTime(new Date());
-        boolean save = userTeamService.save(userTeam);
-        return save;
     }
 
     @Override
@@ -323,8 +337,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         Team team = getTeamById(id);
         long teamId = team.getId();
         // 校验你是不是队伍的队长
-        if(team.getUserId() != loginUser.getId()){
-             throw new BusinessException(ErrorCode.FORBIDDEN,"你不是队长");
+        if (team.getUserId() != loginUser.getId()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "你不是队长");
         }
         // 移除所有加入队伍的关联信息
         QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
