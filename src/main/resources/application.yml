@@ -28,10 +28,10 @@ server:
   port: ${myapp.server.port}
   servlet:
     context-path: /api
-#  ssl:
-#    key-store: classpath:goodgoodyl.pfx
-#    key-store-type: PKCS12
-#    key-store-password: qaybg7l1
+  ssl:
+    key-store: classpath:goodgoodyl.pfx
+    key-store-type: ${myapp.server.ssl.key-store-type}
+    key-store-password: q${myapp.server.ssl.key-store-password}
 #    session:
 #      cookie:
 #        domain: localhost
